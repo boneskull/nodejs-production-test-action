@@ -9,6 +9,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
+      - uses: bahmutov/npm-install@v1
       - name: Production Test Action
         uses: boneskull/nodejs-production-test-action@v1
         with:
