@@ -18,9 +18,11 @@ inputs:
   workspaces:
     description: 'Pack all workspaces. Corresponds to the "--workspaces" flag of "npm pack"'
     required: false
+    default: 'false'
   includeWorkspaceRoot:
     description: 'If "allWorkspaces" is true, also pack the workspace root. Corresponds to the "--include-workspace-root" flag of "npm pack"'
     required: false
+    default: 'false'
   tmpDirPrefix:
     description: 'Explicit temp dir prefix to use for packing'
     default: 'nodejs-production-test-action-'

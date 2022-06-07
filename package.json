@@ -5,7 +5,8 @@
   "main": "dist/index.js",
   "scripts": {
     "test": "tsc",
-    "prepare": "ncc build index.js --license=licenses.txt --minify"
+    "prepare": "ncc build index.js --quiet --license=licenses.txt --minify",
+    "production-test": "node dist/index.js"
   },
   "keywords": [],
   "author": "Christopher Hiller <boneskull@boneskull.com>",

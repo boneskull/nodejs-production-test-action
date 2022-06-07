@@ -1,18 +1,28 @@
-import core from '@actions/core';
-import {getExecOutput} from '@actions/exec';
-import {which} from '@actions/io';
-import {mkdtemp} from 'node:fs/promises';
-import {join} from 'node:path';
-import {tmpdir} from 'node:os';
+const core = require('@actions/core');
+const {getExecOutput} = require('@actions/exec');
+const {which} = require('@actions/io');
+const fs = require('fs/promises');
+const path = require('path');
+const {tmpdir} = require('os');
 
 async function main() {
+  if (process.env.npm_config_nodejs_production_test_action) {
+    core.info('Internal test OK');
+    return;
+  }
+
   const scriptName = core.getInput('script');
   const scriptPath = core.getInput('scriptPath');
   const tmpDirPrefix = core.getInput('tmpDirPrefix');
-  const workspaces = (core.getInput('workspace') ?? '').split(/\s+/g);
+  const workspaces = core.getInput('workspace');
   const allWorkspaces = core.getBooleanInput('workspaces');
   const scriptArgs = core.getInput('scriptArgs');
   const includeWorkspaceRoot = core.getBooleanInput('includeWorkspaceRoot');
+
+  if (!(scriptName || scriptPath)) {
+    core.setFailed('Either `script` or `scriptPath` input must be specified');
+    return;
+  }
 
   /** @type {string} */
   let npmPath;
@@ -33,7 +43,7 @@ async function main() {
   }
 
   try {
-    tmpDir = await mkdtemp(join(tmpdir(), tmpDirPrefix));
+    tmpDir = await fs.mkdtemp(path.join(tmpdir(), tmpDirPrefix));
     core.info(`Using temp dir ${tmpDir}`);
   } catch (err) {
     const {message} = /** @type {NodeJS.ErrnoException} */ (err);
@@ -41,9 +51,9 @@ async function main() {
     return;
   }
 
-  let packArgs = ['pack', '--json', `--pack-destination=${tmpDir}`];
+  let packArgs = ['pack', '--loglevel=silent', '--json', `--pack-destination=${tmpDir}`];
   if (workspaces.length) {
-    packArgs = [...packArgs, ...workspaces.map((w) => `--workspace=${w}`)];
+    packArgs = [...packArgs, ...workspaces.split(/\s+/g).map((w) => `--workspace=${w}`)];
   }
   if (allWorkspaces) {
     packArgs = [...packArgs, '--workspaces'];
@@ -64,7 +74,7 @@ async function main() {
   try {
     const parsed = JSON.parse(packOutput)[0];
     packFilepath = parsed.filename;
-    installPath = join(tmpDir, 'node_modules', parsed.name);
+    installPath = path.join(tmpDir, 'node_modules', parsed.name);
     core.info(`Packed to ${packFilepath}`);
   } catch (err) {
     const {message} = /** @type {SyntaxError} */ (err);
