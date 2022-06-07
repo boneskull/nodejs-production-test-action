@@ -14,32 +14,27 @@ In other words, we want to check if `npm install <your-pkg>` actually installs a
 
 ### `script`
 
-npm script name to execute as a test (as it appears in your `scripts` property of `package.json`). Preferred over `scriptPath`.
-
-> One of `script` or [`scriptPath`](#scriptPath) is required.
-
-### `scriptPath`
-
-Node.js script to execute as a test. Script must be present in packed/published package. `script` is preferred over this. _Does not respect any workspace-related inputs._
-
-> One of [`script`](#script) or `scriptPath` is required.
+npm script name (as in the `scripts` prop of `package.json``) to run. _Required._
 
 ### `scriptArgs`
 
-Space-delimited list of arguments to pass to either [`script`](#script) or [`scriptPath`](#scriptPath).
+Space-delimited list of extra arguments (including any leading dashes) to pass to the script.
 
 ### `workspace`
 
-Space-delimited list of one or more npm workspace names, paths, or a path to a workspace dir. Corresponds to the `--workspace` argument of `npm pack`
-and/or `npm run-script`.
+Space-delimited list of one or more npm workspace names, paths, or a path to a workspace dir. Corresponds to the `--workspace` argument of `npm pack`. If present, will cause `npm run-script` to run for each resulting installation.
 
 ### `workspaces`
 
-Pack all workspaces. Corresponds to the "--workspaces" flag of `npm pack` and/or `npm run-script`. (Boolean)
+Pack all workspaces. Corresponds to the `--workspaces` flag of `npm pack`. If true, will cause `npm run-script` to run for each resulting installation. _Boolean._
 
 ### `includeWorkspaceRoot`
 
-If [`workspaces`](#workspaces) is true, also consider the workspace root. Corresponds to the `--include-workspace-root` flag of `npm pack` and/or `npm run-script`. (Boolean)
+If [`workspaces`](#workspaces) is true, also pack the workspace root. Corresponds to the `--include-workspace-root` flag of `npm pack`. _Boolean._
+
+### `extraNpmInstallArgs`
+
+Space-delimited list of extra arguments (including any leading dashes; e.g., `--ignore-scripts`) to use with `npm install /path/to/tarball.tgz`.
 
 ## Outputs
 
@@ -50,7 +45,7 @@ n/a
 ```yaml
 uses: boneskull/nodejs-production-test-action@v1
 with:
-  script: "production-test"
+  script: 'production-test'
 ```
 
 ## License
