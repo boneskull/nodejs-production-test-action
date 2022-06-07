@@ -122,7 +122,7 @@ async function main() {
   if (scriptName) {
     let scriptNameArgs = ["run-script", scriptName];
     if (scriptArgs) {
-      scriptNameArgs = [...scriptNameArgs, "--", ...scriptArgs.split(/\s+/g)];
+      scriptNameArgs = [...scriptNameArgs, ...scriptArgs.split(/\s+/g)];
     }
     const { exitCode } = await getExecOutput(npmPath, scriptNameArgs, {
       cwd: installPath,
