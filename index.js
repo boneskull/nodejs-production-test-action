@@ -1,3 +1,4 @@
+const { success, info, error } = require("log-symbols");
 const core = require("@actions/core");
 const { getExecOutput } = require("@actions/exec");
 const { which } = require("@actions/io");
@@ -5,9 +6,24 @@ const fs = require("fs/promises");
 const path = require("path");
 const { tmpdir } = require("os");
 
+const log = {
+  /** @param {string} msg */
+  info(msg) {
+    log.info(`${info} ${msg}`);
+  },
+  /** @param {string} msg */
+  fail(msg) {
+    log.fail(`${error} ${msg}`);
+  },
+  /** @param {string} msg */
+  ok(msg) {
+    log.info(`${success} ${msg}`);
+  },
+};
+
 async function main() {
   if (process.env.npm_config_nodejs_production_test_action) {
-    core.info("Internal test OK");
+    log.ok("Internal test OK");
     return;
   }
 
@@ -20,7 +36,7 @@ async function main() {
   const includeWorkspaceRoot = core.getBooleanInput("includeWorkspaceRoot");
 
   if (!(scriptName || scriptPath)) {
-    core.setFailed("Either `script` or `scriptPath` input must be specified");
+    log.fail("Either `script` or `scriptPath` input must be specified");
     return;
   }
 
@@ -35,19 +51,19 @@ async function main() {
 
   try {
     npmPath = await which("npm", true);
-    core.info(`Found npm at ${npmPath}`);
+    log.ok(`Found npm at ${npmPath}`);
   } catch (err) {
     const { message } = /** @type {Error} */ (err);
-    core.setFailed(`npm not found in PATH: ${message}`);
+    log.fail(`npm not found in PATH: ${message}`);
     return;
   }
 
   try {
     tmpDir = await fs.mkdtemp(path.join(tmpdir(), tmpDirPrefix));
-    core.info(`Using temp dir ${tmpDir}`);
+    log.info(`Using temp dir ${tmpDir}`);
   } catch (err) {
     const { message } = /** @type {NodeJS.ErrnoException} */ (err);
-    core.setFailed(`Failed to create temporary directory: ${message}`);
+    log.fail(`Failed to create temporary directory: ${message}`);
     return;
   }
 
@@ -75,18 +91,18 @@ async function main() {
     packArgs
   );
   if (packExitCode) {
-    core.setFailed(`"npm pack" failed with exit code ${packExitCode}`);
+    log.fail(`"npm pack" failed with exit code ${packExitCode}`);
     return;
   }
 
   try {
     const parsed = JSON.parse(packOutput)[0];
-    packFilepath = parsed.filename;
+    packFilepath = path.join(tmpDir, parsed.filename);
     installPath = path.join(tmpDir, "node_modules", parsed.name);
-    core.info(`Packed to ${packFilepath}`);
+    log.ok(`Packed to ${packFilepath}`);
   } catch (err) {
     const { message } = /** @type {SyntaxError} */ (err);
-    core.setFailed(`Failed to parse JSON output from npm pack: ${message}`);
+    log.fail(`Failed to parse JSON output from npm pack: ${message}`);
     return;
   }
 
@@ -98,10 +114,10 @@ async function main() {
     }
   );
   if (installExitCode) {
-    core.setFailed(`"npm install" failed with exit code ${installExitCode}`);
+    log.fail(`"npm install" failed with exit code ${installExitCode}`);
     return;
   }
-  core.info(`Installed ${packFilepath} successfully`);
+  log.ok(`Installed ${packFilepath} successfully`);
 
   if (scriptName) {
     let scriptNameArgs = ["run-script", scriptName];
@@ -112,12 +128,10 @@ async function main() {
       cwd: installPath,
     });
     if (exitCode) {
-      core.setFailed(
-        `npm script "${scriptName}" failed with exit code ${exitCode}`
-      );
+      log.fail(`npm script "${scriptName}" failed with exit code ${exitCode}`);
       return;
     }
-    core.info(`npm script "${scriptName}" ran successfully`);
+    log.info(`npm script "${scriptName}" ran successfully`);
   } else if (scriptPath) {
     let scriptPathArgs = [scriptPath];
     if (scriptArgs) {
@@ -127,13 +141,13 @@ async function main() {
       cwd: installPath,
     });
     if (exitCode) {
-      core.setFailed(`"node ${scriptPath}" failed with code ${exitCode}`);
+      log.fail(`"node ${scriptPath}" failed with code ${exitCode}`);
       return;
     }
-    core.info(`Script "${scriptName}" ran successfully`);
+    log.ok(`Script "${scriptName}" ran successfully`);
   }
 }
 
 main().catch((err) => {
-  core.setFailed(err.message);
+  log.fail(err.message);
 });
