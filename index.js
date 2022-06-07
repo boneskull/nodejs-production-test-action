@@ -9,15 +9,15 @@ const { tmpdir } = require("os");
 const log = {
   /** @param {string} msg */
   info(msg) {
-    log.info(`${info} ${msg}`);
+    core.info(`${info} ${msg}`);
   },
   /** @param {string} msg */
   fail(msg) {
-    log.fail(`${error} ${msg}`);
+    core.setFailed(`${error} ${msg}`);
   },
   /** @param {string} msg */
   ok(msg) {
-    log.info(`${success} ${msg}`);
+    core.info(`${success} ${msg}`);
   },
 };
 
