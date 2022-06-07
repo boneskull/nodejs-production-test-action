@@ -11,6 +11,11 @@
   "keywords": [],
   "author": "Christopher Hiller <boneskull@boneskull.com>",
   "license": "Apache-2.0",
+  "files": [
+    "dist",
+    "index.js",
+    "action.yml"
+  ],
   "dependencies": {
     "@actions/core": "^1.8.2",
     "@actions/exec": "^1.1.1",
