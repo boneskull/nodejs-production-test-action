@@ -1,6 +1,6 @@
 {
   "name": "nodejs-production-test-action",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Catches publishing problems",
   "main": "dist/index.js",
   "scripts": {
