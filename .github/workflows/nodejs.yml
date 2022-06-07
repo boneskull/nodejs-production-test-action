@@ -7,8 +7,8 @@ jobs:
     name: Production Test
     runs-on: ubuntu-latest
     steps:
-      - name: npm install
-        uses: bahmutov/npm-install@v1
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
       - name: Production Test Action
         uses: boneskull/nodejs-production-test-action@v1
         with:
