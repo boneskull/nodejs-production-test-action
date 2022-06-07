@@ -1,32 +1,31 @@
-
-name: 'Node.js Production Test Action'
-description: 'Run a test script against a package as a consumer would'
+name: "Node.js Production Test Action"
+description: "Run a test script against a package as a consumer would"
 inputs:
   script:
     description: 'npm script name to run. Preferred over "scriptPath"'
     required: false
-  scriptArgs: 
+  scriptArgs:
     description: 'Extra arguments to pass to the script (space delimited). Usable with either "script" or "scriptPath"'
     required: false
   scriptPath:
     description: 'Node.js script to execute as test. Must be present in packed/published package. "script" is preferred.'
     required: true
-    default: 'index.js'
+    default: "index.js"
   workspace:
     description: 'Space-delimited list of one or more npm workspace names, paths, or a path to a workspace dir. Corresponds to the "--workspace" argument of "npm pack"'
     required: false
   workspaces:
     description: 'Pack all workspaces. Corresponds to the "--workspaces" flag of "npm pack"'
     required: false
-    default: 'false'
+    default: "false"
   includeWorkspaceRoot:
     description: 'If "allWorkspaces" is true, also pack the workspace root. Corresponds to the "--include-workspace-root" flag of "npm pack"'
     required: false
-    default: 'false'
+    default: "false"
   tmpDirPrefix:
-    description: 'Explicit temp dir prefix to use for packing'
-    default: 'nodejs-production-test-action-'
+    description: "Explicit temp dir prefix to use for packing"
+    default: "nodejs-production-test-action-"
     required: true
 runs:
-  using: 'node16'
-  main: 'index.js'
+  using: "node16"
+  main: "dist/index.js"
