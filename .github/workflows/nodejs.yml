@@ -11,6 +11,6 @@ jobs:
       - uses: actions/setup-node@v3
       - uses: bahmutov/npm-install@v1
       - name: Production Test Action
-        uses: boneskull/nodejs-production-test-action@v1
+        uses: boneskull/nodejs-production-test-action@main
         with:
           script: production-test
