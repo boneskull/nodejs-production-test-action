@@ -48,9 +48,9 @@ n/a
 ## Example Usage
 
 ```yaml
-uses: boneskull/nodejs-production-test-action@1.0.0
+uses: boneskull/nodejs-production-test-action@v1
 with:
-  script: 'production-test'
+  script: "production-test"
 ```
 
 ## License
