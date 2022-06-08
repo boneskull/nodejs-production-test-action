@@ -3,7 +3,7 @@ description: 'Run a test script against a package as a consumer would'
 inputs:
   script:
     description: 'npm script name (as in the `scripts` prop of `package.json``) to run'
-    required: false
+    required: true
   scriptArgs:
     description: 'Space-delimited list of extra arguments (including any leading dashes) to pass to the script.'
     required: false
