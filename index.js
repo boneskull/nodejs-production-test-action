@@ -3,6 +3,7 @@ const {success, info, error, warning} = require('log-symbols');
 const core = require('@actions/core');
 const {getExecOutput} = require('@actions/exec');
 const {which} = require('@actions/io');
+const {inspect} = require('util');
 const fs = require('fs/promises');
 const path = require('path');
 const {tmpdir} = require('os');
@@ -25,6 +26,10 @@ const log = {
   /** @param {string} msg */
   warn(msg) {
     core.warning(`${warning} ${msg}`);
+  },
+  /** @param {any} value */
+  dir(value) {
+    core.info(inspect(value, {depth: null}));
   },
 };
 
@@ -67,7 +72,8 @@ async function pack({
     'pack',
     '--json',
     `--pack-destination=${tmpDir}`,
-    '--loglevel=silent',
+    '--foreground-scripts=false', // suppress output of lifecycle scripts so json can be parsed
+    '--silent',
   ];
   if (workspaces.length) {
     packArgs = [...packArgs, ...workspaces.map((w) => `--workspace=${w}`)];
@@ -78,6 +84,13 @@ async function pack({
     }
   }
 
+  if (allWorkspaces) {
+    log.info('Packing all workspaces; please wait…');
+  } else {
+    log.info(
+      `Packing ${pluralize('workspace', workspaces.length, true)}; please wait…`
+    );
+  }
   const {stdout: packOutput, exitCode} = await getExecOutput(
     npmPath,
     packArgs,
@@ -90,10 +103,14 @@ async function pack({
   try {
     /** @type {NpmPackResult[]} */
     const parsed = JSON.parse(packOutput);
-    const result = parsed.map(({filename, name}) => ({
-      tarballFilepath: path.join(tmpDir, filename),
-      installPath: path.join(tmpDir, 'node_modules', name),
-    }));
+    const result = parsed.map(({filename, name}) => {
+      // workaround for https://github.com/npm/cli/issues/3405
+      filename = filename.replace(/^@(.+?)\//, '$1-');
+      return {
+        tarballFilepath: path.join(tmpDir, filename),
+        installPath: path.join(tmpDir, 'node_modules', name),
+      };
+    });
     log.ok(`Packed ${pluralize('package', result.length, true)}`);
     return result;
   } catch (err) {
@@ -152,29 +169,18 @@ async function runScript({
   if (scriptArgs) {
     scriptNameArgs = [...scriptNameArgs, ...scriptArgs];
   }
-  const ctrl = new AbortController();
 
-  await Promise.all(
-    packResults.map(async ({installPath: cwd}) => {
-      if (ctrl.signal.aborted) {
-        log.warn('Aborting due to previous failure');
-        return;
-      }
-      const {exitCode} = await getExecOutput(npmPath, scriptNameArgs, {
-        cwd,
-        silent,
-      });
-      if (exitCode) {
-        try {
-          throw new Error(
-            `npm script "${scriptName}" failed with exit code ${exitCode}`
-          );
-        } finally {
-          ctrl.abort();
-        }
-      }
-    })
-  );
+  for await (const {installPath: cwd} of packResults) {
+    const {exitCode} = await getExecOutput(npmPath, scriptNameArgs, {
+      cwd,
+      silent,
+    });
+    if (exitCode) {
+      throw new Error(
+        `npm script "${scriptName}" failed with exit code ${exitCode}`
+      );
+    }
+  }
   log.ok(
     `Ran npm script "${scriptName}" in ${pluralize(
       'package',
@@ -232,26 +238,34 @@ async function main() {
 
   const npmPath = await findNpm();
   const tmpDir = await createTempDir();
-  const packResults = await pack({
-    npmPath,
-    tmpDir,
-    workspaces,
-    allWorkspaces,
-    includeWorkspaceRoot,
-    silent,
-  });
-  await install({
-    npmPath,
-    tmpDir,
-    packResults,
-    extraArgs,
-  });
-  await runScript({
-    npmPath,
-    scriptName,
-    scriptArgs,
-    packResults,
-  });
+  try {
+    const packResults = await pack({
+      npmPath,
+      tmpDir,
+      workspaces,
+      allWorkspaces,
+      includeWorkspaceRoot,
+      silent,
+    });
+    await install({
+      npmPath,
+      tmpDir,
+      packResults,
+      extraArgs,
+    });
+    await runScript({
+      npmPath,
+      scriptName,
+      scriptArgs,
+      packResults,
+    });
+  } finally {
+    try {
+      await fs.rm(tmpDir, {recursive: true, force: true});
+    } catch {
+      log.warn(`Failed to cleanup temp dir ${tmpDir}`);
+    }
+  }
 }
 
 main().catch((err) => {

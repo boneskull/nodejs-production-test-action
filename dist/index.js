@@ -6864,6 +6864,7 @@ require('./sourcemap-register.js');
     const core = __nccwpck_require__(186);
     const {getExecOutput} = __nccwpck_require__(514);
     const {which} = __nccwpck_require__(436);
+    const {inspect} = __nccwpck_require__(837);
     const fs = __nccwpck_require__(292);
     const path = __nccwpck_require__(17);
     const {tmpdir} = __nccwpck_require__(37);
@@ -6886,6 +6887,10 @@ require('./sourcemap-register.js');
       /** @param {string} msg */
       warn(msg) {
         core.warning(`${warning} ${msg}`);
+      },
+      /** @param {any} value */
+      dir(value) {
+        core.info(inspect(value, {depth: null}));
       },
     };
 
@@ -6928,7 +6933,8 @@ require('./sourcemap-register.js');
         'pack',
         '--json',
         `--pack-destination=${tmpDir}`,
-        '--loglevel=silent',
+        '--foreground-scripts=false', // suppress output of lifecycle scripts so json can be parsed
+        '--silent',
       ];
       if (workspaces.length) {
         packArgs = [...packArgs, ...workspaces.map((w) => `--workspace=${w}`)];
@@ -6939,6 +6945,17 @@ require('./sourcemap-register.js');
         }
       }
 
+      if (allWorkspaces) {
+        log.info('Packing all workspaces; please wait…');
+      } else {
+        log.info(
+          `Packing ${pluralize(
+            'workspace',
+            workspaces.length,
+            true
+          )}; please wait…`
+        );
+      }
       const {stdout: packOutput, exitCode} = await getExecOutput(
         npmPath,
         packArgs,
@@ -6951,10 +6968,14 @@ require('./sourcemap-register.js');
       try {
         /** @type {NpmPackResult[]} */
         const parsed = JSON.parse(packOutput);
-        const result = parsed.map(({filename, name}) => ({
-          tarballFilepath: path.join(tmpDir, filename),
-          installPath: path.join(tmpDir, 'node_modules', name),
-        }));
+        const result = parsed.map(({filename, name}) => {
+          // workaround for https://github.com/npm/cli/issues/3405
+          filename = filename.replace(/^@(.+?)\//, '$1-');
+          return {
+            tarballFilepath: path.join(tmpDir, filename),
+            installPath: path.join(tmpDir, 'node_modules', name),
+          };
+        });
         log.ok(`Packed ${pluralize('package', result.length, true)}`);
         return result;
       } catch (err) {
@@ -7017,29 +7038,18 @@ require('./sourcemap-register.js');
       if (scriptArgs) {
         scriptNameArgs = [...scriptNameArgs, ...scriptArgs];
       }
-      const ctrl = new AbortController();
 
-      await Promise.all(
-        packResults.map(async ({installPath: cwd}) => {
-          if (ctrl.signal.aborted) {
-            log.warn('Aborting due to previous failure');
-            return;
-          }
-          const {exitCode} = await getExecOutput(npmPath, scriptNameArgs, {
-            cwd,
-            silent,
-          });
-          if (exitCode) {
-            try {
-              throw new Error(
-                `npm script "${scriptName}" failed with exit code ${exitCode}`
-              );
-            } finally {
-              ctrl.abort();
-            }
-          }
-        })
-      );
+      for await (const {installPath: cwd} of packResults) {
+        const {exitCode} = await getExecOutput(npmPath, scriptNameArgs, {
+          cwd,
+          silent,
+        });
+        if (exitCode) {
+          throw new Error(
+            `npm script "${scriptName}" failed with exit code ${exitCode}`
+          );
+        }
+      }
       log.ok(
         `Ran npm script "${scriptName}" in ${pluralize(
           'package',
@@ -7097,26 +7107,34 @@ require('./sourcemap-register.js');
 
       const npmPath = await findNpm();
       const tmpDir = await createTempDir();
-      const packResults = await pack({
-        npmPath,
-        tmpDir,
-        workspaces,
-        allWorkspaces,
-        includeWorkspaceRoot,
-        silent,
-      });
-      await install({
-        npmPath,
-        tmpDir,
-        packResults,
-        extraArgs,
-      });
-      await runScript({
-        npmPath,
-        scriptName,
-        scriptArgs,
-        packResults,
-      });
+      try {
+        const packResults = await pack({
+          npmPath,
+          tmpDir,
+          workspaces,
+          allWorkspaces,
+          includeWorkspaceRoot,
+          silent,
+        });
+        await install({
+          npmPath,
+          tmpDir,
+          packResults,
+          extraArgs,
+        });
+        await runScript({
+          npmPath,
+          scriptName,
+          scriptArgs,
+          packResults,
+        });
+      } finally {
+        try {
+          await fs.rm(tmpDir, {recursive: true, force: true});
+        } catch {
+          log.warn(`Failed to cleanup temp dir ${tmpDir}`);
+        }
+      }
     }
 
     main().catch((err) => {

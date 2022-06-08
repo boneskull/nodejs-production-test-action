@@ -63,8 +63,42 @@ jobs:
           #workspaces: true # alternatively, all workspaces
           quiet: false # do not suppress npm output
           includeWorkspaceRoot: false # also include workspace root if `workspaces` is true
-          extraNpmInstallArgs: '--ignore-scripts' # extra flags for `npm install` of tarball
+          extraNpmInstallArgs: '--ignore-scripts' # extra flags for `npm install` of tarball, if needed
 ```
+
+## Local Testing
+
+To mimic what GH actions would do, run `node dist/index.js` and set the following environment variables (_all_ are required):
+
+- `INPUT_SCRIPT=<your-script>`
+- `INPUT_QUIET=true` or `INPUT_QUIET=false`
+- `INPUT_WORKSPACES=true` or `INPUT_WORKSPACES=false`
+- `INPUT_INCLUDEWORKSPACEROOT=true` or `INPUT_INCLUDEWORKSPACEROOT=false`
+
+Using the same convention, other inputs can be set this way via environment variables.
+
+## Notes
+
+- `npm run-script` operations are run in serial due to the typical low CPU core count of CI machines and the inability to abort child processes via GH's actions toolkit. This may be re-enabled at a later time if an API with `AbortSignal` support can be leveraged.
+- The installation of tarballs happens within a single temp dir. At a later time, each `npm install` should happen in its own directory. This will necessarily cause a slowdown, because the `npm install` command is run against all tarballs at once.
+- The temp dir is removed at the end of the run.
+- Lifecycle script output from `npm pack` is _always_ suppressed because it writes to `STDOUT` and thus inhibits parsing of its JSON output.
+
+## Roadmap
+
+- Split the meat of this into [its own module](https://github.com/boneskull/midnight-smoker) so it can easily be run outside of a CI context.
+- Run `npm install` and `npm run-script` in parallel (see [notes](#notes)).
+
+### Stuff I Won't Do But Will Entertain PRs For
+
+- Alternate package manager support
+- Execution of arbitrary scripts (instead of `package.json` scripts)
+
+### Non-Goals
+
+- Support for different CI services
+- Explicit support for unique or weird use-cases
+- Rewrite it in TypeScript
 
 ## License
 
