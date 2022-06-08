@@ -36,6 +36,10 @@ If [`workspaces`](#workspaces) is true, also pack the workspace root. Correspond
 
 Space-delimited list of extra arguments (including any leading dashes; e.g., `--ignore-scripts`) to use with `npm install /path/to/tarball.tgz`.
 
+### `quiet`
+
+If true, suppress output from `npm install`, `npm pack`, and `npm run-script`.
+
 ## Outputs
 
 n/a
@@ -43,9 +47,23 @@ n/a
 ## Example Usage
 
 ```yaml
-uses: boneskull/nodejs-production-test-action@v1
-with:
-  script: 'production-test'
+jobs:
+  smoke:
+    name: Smoke Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install dependencies
+        run: npm install
+      - uses: boneskull/nodejs-production-test-action@v1
+        with:
+          script: test:smoke # name of script in workspace
+          scriptArgs: '--verbose' # any extra flags to pass to `npm run-script <script> [flags]`
+          workspace: foo bar # list of npm workspaces, if any
+          #workspaces: true # alternatively, all workspaces
+          quiet: false # do not suppress npm output
+          includeWorkspaceRoot: false # also include workspace root if `workspaces` is true
+          extraNpmInstallArgs: '--ignore-scripts' # extra flags for `npm install` of tarball
 ```
 
 ## License

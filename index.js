@@ -51,7 +51,7 @@ async function createTempDir() {
 }
 
 /**
- *
+ * Runs `npm pack` on each package in `workspaces`
  * @param {PackOptions} opts
  * @returns {Promise<PackResult[]>}
  */
@@ -61,13 +61,9 @@ async function pack({
   workspaces = [],
   allWorkspaces = false,
   includeWorkspaceRoot = false,
+  silent = false,
 }) {
-  let packArgs = [
-    'pack',
-    '--loglevel=silent',
-    '--json',
-    `--pack-destination=${tmpDir}`,
-  ];
+  let packArgs = ['pack', '--json', `--pack-destination=${tmpDir}`];
   if (workspaces) {
     packArgs = [...packArgs, ...workspaces.map((w) => `--workspace=${w}`)];
   }
@@ -81,7 +77,7 @@ async function pack({
   const {stdout: packOutput, exitCode} = await getExecOutput(
     npmPath,
     packArgs,
-    {silent: true}
+    {silent}
   );
   if (exitCode) {
     throw new Error(`"npm pack" failed with exit code ${exitCode}`);
@@ -107,7 +103,13 @@ async function pack({
  * @param {InstallOptions} opts
  * @returns {Promise<void>}
  */
-async function install({npmPath, tmpDir, packResults = [], extraArgs = []}) {
+async function install({
+  npmPath,
+  tmpDir: cwd,
+  packResults = [],
+  extraArgs = [],
+  silent = false,
+}) {
   if (packResults.length) {
     const installArgs = [
       'install',
@@ -118,10 +120,7 @@ async function install({npmPath, tmpDir, packResults = [], extraArgs = []}) {
     const {exitCode: installExitCode} = await getExecOutput(
       npmPath,
       installArgs,
-      {
-        cwd: tmpDir,
-        silent: true,
-      }
+      {cwd, silent}
     );
 
     if (installExitCode) {
@@ -132,15 +131,16 @@ async function install({npmPath, tmpDir, packResults = [], extraArgs = []}) {
 }
 
 /**
- *
+ * Runs the specified `scriptName` npm script for each package in `packResults`
  * @param {RunScriptOptions} opts
- * @returns
+ * @returns {Promise<void>}
  */
 async function runScript({
   npmPath,
   scriptName,
   scriptArgs = [],
   packResults = [],
+  silent = false,
 }) {
   let scriptNameArgs = ['run-script', scriptName];
   if (scriptArgs) {
@@ -149,14 +149,14 @@ async function runScript({
   const ctrl = new AbortController();
 
   await Promise.all(
-    packResults.map(async ({installPath}) => {
+    packResults.map(async ({installPath: cwd}) => {
       if (ctrl.signal.aborted) {
         log.warn('Aborting due to previous failure');
         return;
       }
       const {exitCode} = await getExecOutput(npmPath, scriptNameArgs, {
-        cwd: installPath,
-        silent: true,
+        cwd,
+        silent,
       });
       if (exitCode) {
         try {
@@ -189,18 +189,40 @@ function splitByWhitespace(str) {
   return [];
 }
 
-async function main() {
-  if (process.env.npm_config_nodejs_production_test_action) {
-    log.ok('Internal test OK');
-    return;
-  }
-
+function getInputs() {
   const scriptName = core.getInput('script', {required: true});
   const workspaces = splitByWhitespace(core.getInput('workspace'));
   const allWorkspaces = core.getBooleanInput('workspaces');
   const scriptArgs = splitByWhitespace(core.getInput('scriptArgs'));
   const includeWorkspaceRoot = core.getBooleanInput('includeWorkspaceRoot');
   const extraArgs = splitByWhitespace(core.getInput('extraNpmInstallArgs'));
+  const silent = core.getBooleanInput('quiet');
+  return {
+    scriptName,
+    workspaces,
+    allWorkspaces,
+    scriptArgs,
+    includeWorkspaceRoot,
+    extraArgs,
+    silent,
+  };
+}
+
+async function main() {
+  if (process.env.npm_config_nodejs_production_test_action) {
+    log.ok('Internal test OK');
+    return;
+  }
+
+  const {
+    scriptName,
+    workspaces,
+    allWorkspaces,
+    scriptArgs,
+    includeWorkspaceRoot,
+    extraArgs,
+    silent,
+  } = getInputs();
 
   const npmPath = await findNpm();
   const tmpDir = await createTempDir();
@@ -210,6 +232,7 @@ async function main() {
     workspaces,
     allWorkspaces,
     includeWorkspaceRoot,
+    silent,
   });
   await install({
     npmPath,
@@ -237,9 +260,11 @@ main().catch((err) => {
  * @property {string[]} [workspaces]
  * @property {boolean} [allWorkspaces]
  * @property {boolean} [includeWorkspaceRoot]
+ * @property {boolean} [silent]
  */
 
 /**
+ * An item in the array returned by {@linkcode pack}
  * @typedef PackResult
  * @property {string} installPath
  * @property {string} tarballFilepath
@@ -252,6 +277,7 @@ main().catch((err) => {
  * @property {string} tmpDir
  * @property {PackResult[]} [packResults]
  * @property {string[]} [extraArgs]
+ * @property {boolean} [silent]
  */
 
 /**
@@ -264,6 +290,7 @@ main().catch((err) => {
  * @property {string[]} [workspaces]
  * @property {boolean} [allWorkspaces]
  * @property {boolean} [includeWorkspaceRoot]
+ * @property {boolean} [silent]
  */
 
 /**
@@ -283,6 +310,7 @@ main().catch((err) => {
  */
 
 /**
+ * A part of {@linkcode NpmPackResult}
  * @typedef NpmPackResultFileEntry
  * @property {string} path
  * @property {number} size

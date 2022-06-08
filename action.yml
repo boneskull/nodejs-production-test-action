@@ -21,6 +21,10 @@ inputs:
   extraNpmInstallArgs:
     description: 'Space-delimited list of extra arguments (including any leading dashes; e.g., `--ignore-scripts`) to use with `npm install /path/to/tarball.tgz`.'
     required: false
+  quiet:
+    description: 'If true, suppress output from `npm install`, `npm pack`, and `npm run-script`.'
+    required: false
+    default: 'false'
 runs:
   using: 'node16'
   main: 'dist/index.js'
