@@ -6912,7 +6912,7 @@ require('./sourcemap-register.js');
     }
 
     /**
-     *
+     * Runs `npm pack` on each package in `workspaces`
      * @param {PackOptions} opts
      * @returns {Promise<PackResult[]>}
      */
@@ -6922,27 +6922,27 @@ require('./sourcemap-register.js');
       workspaces = [],
       allWorkspaces = false,
       includeWorkspaceRoot = false,
+      silent = false,
     }) {
       let packArgs = [
         'pack',
-        '--loglevel=silent',
         '--json',
         `--pack-destination=${tmpDir}`,
+        '--loglevel=silent',
       ];
-      if (workspaces) {
+      if (workspaces.length) {
         packArgs = [...packArgs, ...workspaces.map((w) => `--workspace=${w}`)];
-      }
-      if (allWorkspaces) {
+      } else if (allWorkspaces) {
         packArgs = [...packArgs, '--workspaces'];
-      }
-      if (includeWorkspaceRoot) {
-        packArgs = [...packArgs, '--include-workspace-root'];
+        if (includeWorkspaceRoot) {
+          packArgs = [...packArgs, '--include-workspace-root'];
+        }
       }
 
       const {stdout: packOutput, exitCode} = await getExecOutput(
         npmPath,
         packArgs,
-        {silent: true}
+        {silent}
       );
       if (exitCode) {
         throw new Error(`"npm pack" failed with exit code ${exitCode}`);
@@ -6972,9 +6972,10 @@ require('./sourcemap-register.js');
      */
     async function install({
       npmPath,
-      tmpDir,
+      tmpDir: cwd,
       packResults = [],
       extraArgs = [],
+      silent = false,
     }) {
       if (packResults.length) {
         const installArgs = [
@@ -6986,10 +6987,7 @@ require('./sourcemap-register.js');
         const {exitCode: installExitCode} = await getExecOutput(
           npmPath,
           installArgs,
-          {
-            cwd: tmpDir,
-            silent: true,
-          }
+          {cwd, silent}
         );
 
         if (installExitCode) {
@@ -6998,19 +6996,22 @@ require('./sourcemap-register.js');
           );
         }
         log.ok(`Installed ${pluralize('package', packResults.length, true)}`);
+      } else {
+        log.warn(`No packages to install`);
       }
     }
 
     /**
-     *
+     * Runs the specified `scriptName` npm script for each package in `packResults`
      * @param {RunScriptOptions} opts
-     * @returns
+     * @returns {Promise<void>}
      */
     async function runScript({
       npmPath,
       scriptName,
       scriptArgs = [],
       packResults = [],
+      silent = false,
     }) {
       let scriptNameArgs = ['run-script', scriptName];
       if (scriptArgs) {
@@ -7019,14 +7020,14 @@ require('./sourcemap-register.js');
       const ctrl = new AbortController();
 
       await Promise.all(
-        packResults.map(async ({installPath}) => {
+        packResults.map(async ({installPath: cwd}) => {
           if (ctrl.signal.aborted) {
             log.warn('Aborting due to previous failure');
             return;
           }
           const {exitCode} = await getExecOutput(npmPath, scriptNameArgs, {
-            cwd: installPath,
-            silent: true,
+            cwd,
+            silent,
           });
           if (exitCode) {
             try {
@@ -7048,24 +7049,51 @@ require('./sourcemap-register.js');
       );
     }
 
+    /**
+     * split a string by whitespace. if the string is empty, return an empty array.
+     * @param {string} str
+     */
+    function splitByWhitespace(str) {
+      if (str) {
+        return str.split(/\s+/g);
+      }
+      return [];
+    }
+
+    function getInputs() {
+      const scriptName = core.getInput('script', {required: true});
+      const workspaces = splitByWhitespace(core.getInput('workspace'));
+      const allWorkspaces = core.getBooleanInput('workspaces');
+      const scriptArgs = splitByWhitespace(core.getInput('scriptArgs'));
+      const includeWorkspaceRoot = core.getBooleanInput('includeWorkspaceRoot');
+      const extraArgs = splitByWhitespace(core.getInput('extraNpmInstallArgs'));
+      const silent = core.getBooleanInput('quiet');
+      return {
+        scriptName,
+        workspaces,
+        allWorkspaces,
+        scriptArgs,
+        includeWorkspaceRoot,
+        extraArgs,
+        silent,
+      };
+    }
+
     async function main() {
       if (process.env.npm_config_nodejs_production_test_action) {
         log.ok('Internal test OK');
         return;
       }
 
-      const scriptName = core.getInput('script', {required: true});
-      const workspace = core.getInput('workspace');
-      const workspaces = workspace ? workspace.split(/\s+/g) : [];
-      const allWorkspaces = core.getBooleanInput('workspaces');
-      const rawScriptArgs = core.getInput('scriptArgs') || undefined;
-      const scriptArgs = rawScriptArgs ? rawScriptArgs.split(/\s+/g) : [];
-      const includeWorkspaceRoot = core.getBooleanInput('includeWorkspaceRoot');
-      const extraNpmInstallArgs =
-        core.getInput('extraNpmInstallArgs') || undefined;
-      const extraArgs = extraNpmInstallArgs
-        ? extraNpmInstallArgs.split(/\s+/g)
-        : [];
+      const {
+        scriptName,
+        workspaces,
+        allWorkspaces,
+        scriptArgs,
+        includeWorkspaceRoot,
+        extraArgs,
+        silent,
+      } = getInputs();
 
       const npmPath = await findNpm();
       const tmpDir = await createTempDir();
@@ -7075,6 +7103,7 @@ require('./sourcemap-register.js');
         workspaces,
         allWorkspaces,
         includeWorkspaceRoot,
+        silent,
       });
       await install({
         npmPath,
@@ -7102,9 +7131,11 @@ require('./sourcemap-register.js');
      * @property {string[]} [workspaces]
      * @property {boolean} [allWorkspaces]
      * @property {boolean} [includeWorkspaceRoot]
+     * @property {boolean} [silent]
      */
 
     /**
+     * An item in the array returned by {@linkcode pack}
      * @typedef PackResult
      * @property {string} installPath
      * @property {string} tarballFilepath
@@ -7117,6 +7148,7 @@ require('./sourcemap-register.js');
      * @property {string} tmpDir
      * @property {PackResult[]} [packResults]
      * @property {string[]} [extraArgs]
+     * @property {boolean} [silent]
      */
 
     /**
@@ -7129,6 +7161,7 @@ require('./sourcemap-register.js');
      * @property {string[]} [workspaces]
      * @property {boolean} [allWorkspaces]
      * @property {boolean} [includeWorkspaceRoot]
+     * @property {boolean} [silent]
      */
 
     /**
@@ -7148,6 +7181,7 @@ require('./sourcemap-register.js');
      */
 
     /**
+     * A part of {@linkcode NpmPackResult}
      * @typedef NpmPackResultFileEntry
      * @property {string} path
      * @property {number} size

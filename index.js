@@ -63,15 +63,19 @@ async function pack({
   includeWorkspaceRoot = false,
   silent = false,
 }) {
-  let packArgs = ['pack', '--json', `--pack-destination=${tmpDir}`];
-  if (workspaces) {
+  let packArgs = [
+    'pack',
+    '--json',
+    `--pack-destination=${tmpDir}`,
+    '--loglevel=silent',
+  ];
+  if (workspaces.length) {
     packArgs = [...packArgs, ...workspaces.map((w) => `--workspace=${w}`)];
-  }
-  if (allWorkspaces) {
+  } else if (allWorkspaces) {
     packArgs = [...packArgs, '--workspaces'];
-  }
-  if (includeWorkspaceRoot) {
-    packArgs = [...packArgs, '--include-workspace-root'];
+    if (includeWorkspaceRoot) {
+      packArgs = [...packArgs, '--include-workspace-root'];
+    }
   }
 
   const {stdout: packOutput, exitCode} = await getExecOutput(
@@ -127,6 +131,8 @@ async function install({
       throw new Error(`"npm install" failed with exit code ${installExitCode}`);
     }
     log.ok(`Installed ${pluralize('package', packResults.length, true)}`);
+  } else {
+    log.warn(`No packages to install`);
   }
 }
 
