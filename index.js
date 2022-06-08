@@ -178,6 +178,36 @@ async function runScript({
   );
 }
 
+const TRUE_STRINGS = new Set(['true', 'True', 'TRUE']);
+const FALSE_STRINGS = new Set(['false', 'False', 'FALSE']);
+/**
+ * if the string looks like a boolean (as per the YAML spec) return the boolean value
+ * @param {string} str
+ * @see https://github.com/actions/toolkit/issues/844
+ */
+function strToBoolean(str) {
+  if (TRUE_STRINGS.has(str)) {
+    return true;
+  }
+  if (FALSE_STRINGS.has(str)) {
+    return false;
+  }
+  throw new Error(
+    'Invalid boolean value. Allowed values: "true", "True", "TRUE", "false", "False", "FALSE"'
+  );
+}
+
+/**
+ * split a string by whitespace. if the string is empty, return an empty array.
+ * @param {string} str
+ */
+function splitByWhitespace(str) {
+  if (str) {
+    return str.split(/\s+/g);
+  }
+  return [];
+}
+
 async function main() {
   if (process.env.npm_config_nodejs_production_test_action) {
     log.ok('Internal test OK');
@@ -185,16 +215,13 @@ async function main() {
   }
 
   const scriptName = core.getInput('script', {required: true});
-  const workspace = core.getInput('workspace');
-  const workspaces = workspace ? workspace.split(/\s+/g) : [];
-  const allWorkspaces = core.getBooleanInput('workspaces');
-  const rawScriptArgs = core.getInput('scriptArgs') || undefined;
-  const scriptArgs = rawScriptArgs ? rawScriptArgs.split(/\s+/g) : [];
-  const includeWorkspaceRoot = core.getBooleanInput('includeWorkspaceRoot');
-  const extraNpmInstallArgs = core.getInput('extraNpmInstallArgs') || undefined;
-  const extraArgs = extraNpmInstallArgs
-    ? extraNpmInstallArgs.split(/\s+/g)
-    : [];
+  const workspaces = splitByWhitespace(core.getInput('workspace'));
+  const allWorkspaces = strToBoolean(core.getInput('workspaces'));
+  const scriptArgs = splitByWhitespace(core.getInput('scriptArgs'));
+  const includeWorkspaceRoot = strToBoolean(
+    core.getInput('includeWorkspaceRoot')
+  );
+  const extraArgs = splitByWhitespace(core.getInput('extraNpmInstallArgs'));
 
   const npmPath = await findNpm();
   const tmpDir = await createTempDir();

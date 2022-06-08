@@ -12,11 +12,11 @@ inputs:
     required: false
   workspaces:
     description: 'Pack all workspaces. Corresponds to the `--workspaces` flag of `npm pack`. If true, will cause `npm run-script` to run for each resulting installation. _Boolean._'
-    required: true
+    required: false
     default: 'false'
   includeWorkspaceRoot:
     description: 'If `workspaces` is true, also pack the workspace root. Corresponds to the `--include-workspace-root` flag of `npm pack`. _Boolean._'
-    required: true
+    required: false
     default: 'false'
   extraNpmInstallArgs:
     description: 'Space-delimited list of extra arguments (including any leading dashes; e.g., `--ignore-scripts`) to use with `npm install /path/to/tarball.tgz`.'
