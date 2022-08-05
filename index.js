@@ -1,14 +1,11 @@
 const pluralize = require('pluralize');
 const {success, info, error, warning} = require('log-symbols');
 const core = require('@actions/core');
-const {getExecOutput} = require('@actions/exec');
-const {which} = require('@actions/io');
 const {inspect} = require('util');
-const fs = require('fs/promises');
-const path = require('path');
-const {tmpdir} = require('os');
+const {Smoker, events} = require('midnight-smoker');
+const fs = require('fs');
 
-const TMP_DIR_PREFIX = 'nodejs-production-test-action-';
+const {version, name} = JSON.parse(fs.readFileSync('./package.json', 'utf8'));
 
 const log = {
   /** @param {string} msg */
@@ -33,163 +30,6 @@ const log = {
   },
 };
 
-async function findNpm() {
-  try {
-    const npmPath = await which('npm', true);
-    log.ok(`Found npm at ${npmPath}`);
-    return npmPath;
-  } catch (err) {
-    const {message} = /** @type {Error} */ (err);
-    throw new Error(`npm not found in PATH: ${message}`);
-  }
-}
-
-async function createTempDir() {
-  try {
-    const tmpDir = await fs.mkdtemp(path.join(tmpdir(), TMP_DIR_PREFIX));
-    log.info(`Using temp dir ${tmpDir}`);
-    return tmpDir;
-  } catch (err) {
-    const {message} = /** @type {NodeJS.ErrnoException} */ (err);
-    throw new Error(`Failed to create temporary directory: ${message}`);
-  }
-}
-
-/**
- * Runs `npm pack` on each package in `workspaces`
- * @param {PackOptions} opts
- * @returns {Promise<PackResult[]>}
- */
-async function pack({
-  npmPath,
-  tmpDir,
-  workspaces = [],
-  allWorkspaces = false,
-  includeWorkspaceRoot = false,
-  silent = false,
-}) {
-  let packArgs = [
-    'pack',
-    '--json',
-    `--pack-destination=${tmpDir}`,
-    '--foreground-scripts=false', // suppress output of lifecycle scripts so json can be parsed
-    '--silent',
-  ];
-  if (workspaces.length) {
-    packArgs = [...packArgs, ...workspaces.map((w) => `--workspace=${w}`)];
-  } else if (allWorkspaces) {
-    packArgs = [...packArgs, '--workspaces'];
-    if (includeWorkspaceRoot) {
-      packArgs = [...packArgs, '--include-workspace-root'];
-    }
-  }
-
-  if (allWorkspaces) {
-    log.info('Packing all workspaces; please wait…');
-  } else {
-    log.info(
-      `Packing ${pluralize('workspace', workspaces.length, true)}; please wait…`
-    );
-  }
-  const {stdout: packOutput, exitCode} = await getExecOutput(
-    npmPath,
-    packArgs,
-    {silent}
-  );
-  if (exitCode) {
-    throw new Error(`"npm pack" failed with exit code ${exitCode}`);
-  }
-
-  try {
-    /** @type {NpmPackResult[]} */
-    const parsed = JSON.parse(packOutput);
-    const result = parsed.map(({filename, name}) => {
-      // workaround for https://github.com/npm/cli/issues/3405
-      filename = filename.replace(/^@(.+?)\//, '$1-');
-      return {
-        tarballFilepath: path.join(tmpDir, filename),
-        installPath: path.join(tmpDir, 'node_modules', name),
-      };
-    });
-    log.ok(`Packed ${pluralize('package', result.length, true)}`);
-    return result;
-  } catch (err) {
-    const {message} = /** @type {SyntaxError} */ (err);
-    throw new Error(`Failed to parse JSON output from npm pack: ${message}`);
-  }
-}
-
-/**
- * Runs `npm install` with every packed file in a temp dir
- * @param {InstallOptions} opts
- * @returns {Promise<void>}
- */
-async function install({
-  npmPath,
-  tmpDir: cwd,
-  packResults = [],
-  extraArgs = [],
-  silent = false,
-}) {
-  if (packResults.length) {
-    const installArgs = [
-      'install',
-      ...extraArgs,
-      ...packResults.map(({tarballFilepath}) => tarballFilepath),
-    ];
-
-    const {exitCode: installExitCode} = await getExecOutput(
-      npmPath,
-      installArgs,
-      {cwd, silent}
-    );
-
-    if (installExitCode) {
-      throw new Error(`"npm install" failed with exit code ${installExitCode}`);
-    }
-    log.ok(`Installed ${pluralize('package', packResults.length, true)}`);
-  } else {
-    log.warn(`No packages to install`);
-  }
-}
-
-/**
- * Runs the specified `scriptName` npm script for each package in `packResults`
- * @param {RunScriptOptions} opts
- * @returns {Promise<void>}
- */
-async function runScript({
-  npmPath,
-  scriptName,
-  scriptArgs = [],
-  packResults = [],
-  silent = false,
-}) {
-  let scriptNameArgs = ['run-script', scriptName];
-  if (scriptArgs) {
-    scriptNameArgs = [...scriptNameArgs, ...scriptArgs];
-  }
-
-  for await (const {installPath: cwd} of packResults) {
-    const {exitCode} = await getExecOutput(npmPath, scriptNameArgs, {
-      cwd,
-      silent,
-    });
-    if (exitCode) {
-      throw new Error(
-        `npm script "${scriptName}" failed with exit code ${exitCode}`
-      );
-    }
-  }
-  log.ok(
-    `Ran npm script "${scriptName}" in ${pluralize(
-      'package',
-      packResults.length,
-      true
-    )}`
-  );
-}
-
 /**
  * split a string by whitespace. if the string is empty, return an empty array.
  * @param {string} str
@@ -203,20 +43,20 @@ function splitByWhitespace(str) {
 
 function getInputs() {
   const scriptName = core.getInput('script', {required: true});
-  const workspaces = splitByWhitespace(core.getInput('workspace'));
-  const allWorkspaces = core.getBooleanInput('workspaces');
-  const scriptArgs = splitByWhitespace(core.getInput('scriptArgs'));
-  const includeWorkspaceRoot = core.getBooleanInput('includeWorkspaceRoot');
-  const extraArgs = splitByWhitespace(core.getInput('extraNpmInstallArgs'));
-  const silent = core.getBooleanInput('quiet');
+  const json = core.getBooleanInput('json');
+  const workspace = splitByWhitespace(core.getInput('workspace'));
+  const all = core.getBooleanInput('workspaces');
+  const includeRoot = core.getBooleanInput('includeWorkspaceRoot');
+  const installArgs = splitByWhitespace(core.getInput('extraNpmInstallArgs'));
+  const verbose = core.getBooleanInput('verbose');
   return {
     scriptName,
-    workspaces,
-    allWorkspaces,
-    scriptArgs,
-    includeWorkspaceRoot,
-    extraArgs,
-    silent,
+    workspace,
+    all,
+    includeRoot,
+    installArgs,
+    verbose,
+    json,
   };
 }
 
@@ -226,46 +66,93 @@ async function main() {
     return;
   }
 
-  const {
-    scriptName,
-    workspaces,
-    allWorkspaces,
-    scriptArgs,
-    includeWorkspaceRoot,
-    extraArgs,
-    silent,
-  } = getInputs();
+  const {scriptName, workspace, all, includeRoot, installArgs, verbose, json} =
+    getInputs();
 
-  const npmPath = await findNpm();
-  const tmpDir = await createTempDir();
-  try {
-    const packResults = await pack({
-      npmPath,
-      tmpDir,
-      workspaces,
-      allWorkspaces,
-      includeWorkspaceRoot,
-      silent,
-    });
-    await install({
-      npmPath,
-      tmpDir,
-      packResults,
-      extraArgs,
-    });
-    await runScript({
-      npmPath,
-      scriptName,
-      scriptArgs,
-      packResults,
-    });
-  } finally {
-    try {
-      await fs.rm(tmpDir, {recursive: true, force: true});
-    } catch {
-      log.warn(`Failed to cleanup temp dir ${tmpDir}`);
-    }
+  const smoker = new Smoker(scriptName, {
+    workspace,
+    all,
+    includeRoot,
+    installArgs,
+    force: true,
+    verbose,
+    json,
+  });
+
+  if (!json) {
+    smoker
+      .on(events.SMOKE_BEGIN, () => {
+        log.info(`${name} v${version}: Beginning smoke tests`);
+      })
+      .on(events.FIND_NPM_BEGIN, () => {
+        log.info('Looking for npm...');
+      })
+      .on(events.FIND_NPM_OK, (path) => {
+        log.ok(`Found npm at ${path}`);
+      })
+      .on(events.FIND_NPM_FAILED, (err) => {
+        log.fail(`Could not find npm: ${err.message}`);
+        process.exitCode = 1;
+      })
+      .on(events.PACK_BEGIN, () => {
+        /** @type {string} */
+        let what;
+        if (workspace?.length) {
+          what = pluralize('workspace', workspace.length, true);
+        } else if (all) {
+          what = 'all workspaces';
+          if (includeRoot) {
+            what += ' (and the workspace root)';
+          }
+        } else {
+          what = 'current project';
+        }
+        log.info(`Packing ${what}`);
+      })
+      .on(events.PACK_OK, (packItems) => {
+        log.ok(`Packed ${pluralize('package', packItems.length, true)}`);
+      })
+      .on(events.PACK_FAILED, (err) => {
+        log.fail(err.message);
+        process.exitCode = 1;
+      })
+      .on(events.INSTALL_BEGIN, (packItems) => {
+        log.info(
+          `Installing from ${pluralize('tarball', packItems.length, true)}...`
+        );
+      })
+      .on(events.INSTALL_FAILED, (err) => {
+        log.fail(err.message);
+        process.exitCode = 1;
+      })
+      .on(events.INSTALL_OK, (packItems) => {
+        log.ok(`Installed ${pluralize('package', packItems.length, true)}`);
+      })
+      .on(events.RUN_SCRIPT_BEGIN, ({current, total}) => {
+        log.info(`Running script ${current}/${total}...`);
+      })
+      .on(events.RUN_SCRIPT_FAILED, ({error, current, total}) => {
+        log.fail(`Running script ${current}/${total} failed: ${error.all}`);
+        process.exitCode = 1;
+      })
+      .on(events.RUN_SCRIPTS_OK, ({total}) => {
+        log.ok(`Successfully ran ${pluralize('script', total, true)}`);
+      })
+      .on(events.RUN_SCRIPTS_FAILED, ({total, executed, failures}) => {
+        log.fail(
+          `${failures} of ${total} ${pluralize('script', total)} failed`
+        );
+        process.exitCode = 1;
+      })
+      .on(events.SMOKE_FAILED, (err) => {
+        log.fail(err.message);
+        process.exitCode = 1;
+      })
+      .on(events.SMOKE_OK, () => {
+        log.ok('Smoke tests completed successfully');
+      });
   }
+  await smoker.smoke();
 }
 
 main().catch((err) => {
@@ -322,7 +209,7 @@ main().catch((err) => {
  * @property {number} size
  * @property {number} unpackedSize
  * @property {string} shasum
- * @property {string} integreity
+ * @property {string} integrity
  * @property {string} filename
  * @property {NpmPackResultFileEntry[]} files
  * @property {number} entryCount

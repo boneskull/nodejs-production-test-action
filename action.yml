@@ -4,9 +4,6 @@ inputs:
   script:
     description: 'npm script name (as in the `scripts` prop of `package.json``) to run'
     required: true
-  scriptArgs:
-    description: 'Space-delimited list of extra arguments (including any leading dashes) to pass to the script.'
-    required: false
   workspace:
     description: 'Space-delimited list of one or more npm workspace names, paths, or a path to a workspace dir. Corresponds to the `--workspace` argument of `npm pack`. If present, will cause `npm run-script` to run for each resulting installation.'
     required: false
@@ -21,8 +18,12 @@ inputs:
   extraNpmInstallArgs:
     description: 'Space-delimited list of extra arguments (including any leading dashes; e.g., `--ignore-scripts`) to use with `npm install /path/to/tarball.tgz`.'
     required: false
-  quiet:
-    description: 'If true, suppress output from `npm install`, `npm pack`, and `npm run-script`.'
+  verbose:
+    description: 'If `true`, print whatever `npm` is doing under the hood.'
+    required: false
+    default: 'false'
+  json:
+    description: 'If `true``, output JSON instead of human-readable text.'
     required: false
     default: 'false'
 runs:

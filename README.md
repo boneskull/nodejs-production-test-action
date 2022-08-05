@@ -36,9 +36,13 @@ If [`workspaces`](#workspaces) is true, also pack the workspace root. Correspond
 
 Space-delimited list of extra arguments (including any leading dashes; e.g., `--ignore-scripts`) to use with `npm install /path/to/tarball.tgz`.
 
-### `quiet`
+### `verbose`
 
-If true, suppress output from `npm install`, `npm pack`, and `npm run-script`.
+If `true`, print whatever `npm` is doing under the hood. _Boolean._
+
+### `json`
+
+If `true`, output the result of the action as a single JSON blob.  The shape of this is defined by the `SmokerJsonOutput` type declared by [`midnight-smoker`](https://github.com/boneskull/midnight-smoker). _Boolean._
 
 ## Outputs
 
@@ -58,12 +62,11 @@ jobs:
       - uses: boneskull/nodejs-production-test-action@v1
         with:
           script: test:smoke # name of script in workspace
-          scriptArgs: '--verbose' # any extra flags to pass to `npm run-script <script> [flags]`
-          workspace: foo bar # list of npm workspaces, if any
-          #workspaces: true # alternatively, all workspaces
-          quiet: false # do not suppress npm output
-          includeWorkspaceRoot: false # also include workspace root if `workspaces` is true
-          extraNpmInstallArgs: '--ignore-scripts' # extra flags for `npm install` of tarball, if needed
+          # workspace: foo bar # // list of npm workspaces, if any
+          # workspaces: false # // if `true`, run script for all workspaces
+          # quiet: false # // do not suppress npm output
+          # includeWorkspaceRoot: false # // also include workspace root if `workspaces` is true
+          # extraNpmInstallArgs: '--ignore-scripts' # // extra flags for `npm install` of tarball (space-delimited), if needed
 ```
 
 ## Local Testing
@@ -74,6 +77,7 @@ To mimic what GH actions would do, run `node dist/index.js` and set the followin
 - `INPUT_QUIET=true` or `INPUT_QUIET=false`
 - `INPUT_WORKSPACES=true` or `INPUT_WORKSPACES=false`
 - `INPUT_INCLUDEWORKSPACEROOT=true` or `INPUT_INCLUDEWORKSPACEROOT=false`
+- `INPUT_JSON=true` or `INPUT_JSON=false`
 
 Using the same convention, other inputs can be set this way via environment variables.
 
@@ -86,7 +90,6 @@ Using the same convention, other inputs can be set this way via environment vari
 
 ## Roadmap
 
-- Split the meat of this into [its own module](https://github.com/boneskull/midnight-smoker) so it can easily be run outside of a CI context.
 - Run `npm install` and `npm run-script` in parallel (see [notes](#notes)).
 
 ### Stuff I Won't Do But Will Entertain PRs For
@@ -102,4 +105,4 @@ Using the same convention, other inputs can be set this way via environment vari
 
 ## License
 
-Licensed Apache-2.0
+Copyright © 2022 [Christopher "boneskull" Hiller](https://github.com/boneskull).  Licensed Apache-2.0

@@ -4,11 +4,14 @@
   "description": "Catches publishing problems",
   "main": "dist/index.js",
   "scripts": {
-    "test": "tsc",
-    "prepare": "ncc build index.js --quiet --license=licenses.txt --source-map",
-    "production-test": "node dist/index.js",
+    "test": "tsc && npm run test:e2e",
+    "prepare": "npm run build",
+    "test:smoke": "echo 'OK' && exit 0",
+    "test:ci": "node dist/index.js",
+    "test:e2e": "cross-env INPUT_SCRIPT=test:smoke INPUT_QUIET=false INPUT_WORKSPACES=false INPUT_INCLUDEWORKSPACEROOT=false INPUT_JSON=false node dist/index.js",
     "pre-commit": "lint-staged",
-    "preversion": "npm run prepare && git add -A dist"
+    "build": "ncc build index.js --quiet --license=licenses.txt --source-map && tsc",
+    "preversion": "npm run build && git add -A dist"
   },
   "keywords": [],
   "author": "Christopher Hiller <boneskull@boneskull.com>",
@@ -22,20 +25,22 @@
     "*.{js,yml,json,md}": "prettier --write"
   },
   "dependencies": {
-    "@actions/core": "^1.8.2",
+    "@actions/core": "^1.9.0",
     "@actions/exec": "^1.1.1",
     "@actions/io": "^1.1.2",
     "log-symbols": "^4.1.0",
+    "midnight-smoker": "^1.1.1",
     "pluralize": "^8.0.0"
   },
   "devDependencies": {
     "@types/node": "^16.11.38",
     "@types/pluralize": "^0.0.29",
     "@vercel/ncc": "^0.34.0",
+    "cross-env": "^7.0.3",
     "husky": "^8.0.1",
-    "lint-staged": "^13.0.0",
-    "prettier": "^2.6.2",
-    "typescript": "^4.7.3"
+    "lint-staged": "^13.0.3",
+    "prettier": "^2.7.1",
+    "typescript": "^4.7.4"
   },
   "prettier": {
     "singleQuote": true,
