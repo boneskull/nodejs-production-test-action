@@ -9,9 +9,10 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
-      - run: npm ci
+      - name: Install dependencies
+        uses: bahmutov/npm-install@cb39a46f27f14697fec763d60fb23ad347e2befa # tag=v1
       - name: Production Test Action
         uses: ./
         with:
-          script: test:ci
-          scriptArgs: --nodejs_production_test_action
+          script: 'test:ci'
+          scriptArgs: '--nodejs_production_test_action'
