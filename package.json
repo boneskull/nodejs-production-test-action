@@ -13,7 +13,7 @@
     "build": "ncc build index.js --quiet --license=licenses.txt --source-map && tsc",
     "preversion": "npm run build && git add -A dist"
   },
-  "keywords": [],
+  "keywords": ["test", "smoke", "publish", "package", "sanity"],
   "author": "Christopher Hiller <boneskull@boneskull.com>",
   "license": "Apache-2.0",
   "files": [
