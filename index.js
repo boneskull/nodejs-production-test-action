@@ -61,7 +61,7 @@ function getInputs() {
 }
 
 async function main() {
-  if (process.env.npm_config_nodejs_production_test_action) {
+  if (process.env.NODEJS_PRODUCTION_TEST_ACTION) {
     log.ok('Internal test OK');
     return;
   }
