@@ -7,7 +7,7 @@
     "test": "tsc && npm run test:e2e",
     "prepare": "npm run build",
     "test:smoke": "echo 'OK' && exit 0",
-    "test:ci": "node dist/index.js",
+    "test:ci": "cross-env NODEJS_PRODUCTION_TEST_ACTION=1 node dist/index.js",
     "test:e2e": "cross-env INPUT_SCRIPT=test:smoke INPUT_QUIET=false INPUT_WORKSPACES=false INPUT_INCLUDEWORKSPACEROOT=false INPUT_JSON=false node dist/index.js",
     "pre-commit": "lint-staged",
     "build": "ncc build index.js --quiet --license=licenses.txt --source-map && tsc",

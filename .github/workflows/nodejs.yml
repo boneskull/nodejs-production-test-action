@@ -14,5 +14,4 @@ jobs:
       - name: Production Test Action
         uses: ./
         with:
-          script: 'test:ci'
-          scriptArgs: '--nodejs_production_test_action'
+          script: test:ci

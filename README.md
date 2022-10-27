@@ -16,10 +16,6 @@ In other words, we want to check if `npm install <your-pkg>` actually installs a
 
 npm script name (as in the `scripts` prop of `package.json`) to run. _Required._
 
-### `scriptArgs`
-
-Space-delimited list of extra arguments (including any leading dashes) to pass to the script.
-
 ### `workspace`
 
 Space-delimited list of one or more npm workspace names, paths, or a path to a workspace dir. Corresponds to the `--workspace` argument of `npm pack`. If present, will cause `npm run-script` to run for each resulting installation.
