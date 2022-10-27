@@ -14,7 +14,7 @@ In other words, we want to check if `npm install <your-pkg>` actually installs a
 
 ### `script`
 
-npm script name (as in the `scripts` prop of `package.json``) to run. _Required._
+npm script name (as in the `scripts` prop of `package.json`) to run. _Required._
 
 ### `scriptArgs`
 
