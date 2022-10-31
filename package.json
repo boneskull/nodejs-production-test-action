@@ -5,7 +5,7 @@
   "main": "dist/index.js",
   "scripts": {
     "test": "tsc && npm run test:e2e",
-    "prepare": "npm run build && git add -A dist",
+    "prepare": "husky install && npm run build && git add -A dist",
     "test:smoke": "echo 'OK' && exit 0",
     "test:ci": "NODEJS_PRODUCTION_TEST_ACTION=1 node dist/index.js",
     "test:e2e": "cross-env INPUT_SCRIPT=test:smoke INPUT_QUIET=false INPUT_WORKSPACES=false INPUT_INCLUDEWORKSPACEROOT=false INPUT_JSON=false INPUT_VERBOSE=true node dist/index.js",
@@ -13,7 +13,13 @@
     "build": "ncc build index.js --quiet --license=licenses.txt --source-map && tsc",
     "preversion": "npm run build"
   },
-  "keywords": ["test", "smoke", "publish", "package", "sanity"],
+  "keywords": [
+    "test",
+    "smoke",
+    "publish",
+    "package",
+    "sanity"
+  ],
   "author": "Christopher Hiller <boneskull@boneskull.com>",
   "license": "Apache-2.0",
   "files": [
