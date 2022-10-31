@@ -36,7 +36,7 @@
     "@actions/exec": "1.1.1",
     "@actions/io": "1.1.2",
     "log-symbols": "4.1.0",
-    "midnight-smoker": "1.1.1",
+    "midnight-smoker": "1.2.1",
     "pluralize": "8.0.0"
   },
   "devDependencies": {
