@@ -8990,7 +8990,7 @@ function getInputs() {
 }
 
 async function main() {
-  if (process.env.npm_config_nodejs_production_test_action) {
+  if (process.env.NODEJS_PRODUCTION_TEST_ACTION) {
     log.ok('Internal test OK');
     return;
   }
@@ -9020,7 +9020,7 @@ async function main() {
         log.ok(`Found npm at ${path}`);
       })
       .on(events.FIND_NPM_FAILED, (err) => {
-        log.fail(`Could not find npm: ${err.message}`);
+        log.fail(`Could not find npm: ${err?.message ?? err}`);
         process.exitCode = 1;
       })
       .on(events.PACK_BEGIN, () => {
@@ -9042,7 +9042,7 @@ async function main() {
         log.ok(`Packed ${pluralize('package', packItems.length, true)}`);
       })
       .on(events.PACK_FAILED, (err) => {
-        log.fail(err.message);
+        log.fail(err?.message ?? err);
         process.exitCode = 1;
       })
       .on(events.INSTALL_BEGIN, (packItems) => {
@@ -9051,7 +9051,7 @@ async function main() {
         );
       })
       .on(events.INSTALL_FAILED, (err) => {
-        log.fail(err.message);
+        log.fail(err?.message ?? err);
         process.exitCode = 1;
       })
       .on(events.INSTALL_OK, (packItems) => {
@@ -9074,7 +9074,7 @@ async function main() {
         process.exitCode = 1;
       })
       .on(events.SMOKE_FAILED, (err) => {
-        log.fail(err.message);
+        log.fail(err?.message ?? err);
         process.exitCode = 1;
       })
       .on(events.SMOKE_OK, () => {
@@ -9085,7 +9085,7 @@ async function main() {
 }
 
 main().catch((err) => {
-  log.fail(err.message);
+  log.fail(err?.message ?? err);
 });
 
 /**
