@@ -5,13 +5,13 @@
   "main": "dist/index.js",
   "scripts": {
     "test": "tsc && npm run test:e2e",
-    "prepare": "npm run build",
+    "prepare": "npm run build && git add -A dist",
     "test:smoke": "echo 'OK' && exit 0",
-    "test:ci": "cross-env NODEJS_PRODUCTION_TEST_ACTION=1 node dist/index.js",
-    "test:e2e": "cross-env INPUT_SCRIPT=test:smoke INPUT_QUIET=false INPUT_WORKSPACES=false INPUT_INCLUDEWORKSPACEROOT=false INPUT_JSON=false node dist/index.js",
-    "pre-commit": "lint-staged",
+    "test:ci": "NODEJS_PRODUCTION_TEST_ACTION=1 node dist/index.js",
+    "test:e2e": "cross-env INPUT_SCRIPT=test:smoke INPUT_QUIET=false INPUT_WORKSPACES=false INPUT_INCLUDEWORKSPACEROOT=false INPUT_JSON=false INPUT_VERBOSE=true node dist/index.js",
+    "pre-commit": "lint-staged && npm run build",
     "build": "ncc build index.js --quiet --license=licenses.txt --source-map && tsc",
-    "preversion": "npm run build && git add -A dist"
+    "preversion": "npm run build"
   },
   "keywords": ["test", "smoke", "publish", "package", "sanity"],
   "author": "Christopher Hiller <boneskull@boneskull.com>",
@@ -22,7 +22,8 @@
     "action.yml"
   ],
   "lint-staged": {
-    "*.{js,yml,json,md}": "prettier --write"
+    "*.{yml,json,md}": "prettier --write",
+    "./index.js": "pretter --write"
   },
   "dependencies": {
     "@actions/core": "^1.9.0",
