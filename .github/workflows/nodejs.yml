@@ -15,3 +15,4 @@ jobs:
         uses: ./
         with:
           script: test:ci
+          verbose: true
