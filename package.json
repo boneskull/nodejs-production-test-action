@@ -40,7 +40,7 @@
     "pluralize": "8.0.0"
   },
   "devDependencies": {
-    "@types/node": "16.11.47",
+    "@types/node": "16.18.3",
     "@types/pluralize": "0.0.29",
     "@vercel/ncc": "0.34.0",
     "cross-env": "7.0.3",
