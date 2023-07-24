@@ -4,14 +4,14 @@
   "description": "Catches publishing problems",
   "main": "dist/index.js",
   "scripts": {
-    "test": "tsc && npm run test:e2e",
-    "prepare": "husky install && npm run build && git add -A dist",
+    "test": "npm run test:e2e",
+    "prepare": "husky install; npm run build",
     "test:smoke": "echo 'OK' && exit 0",
     "test:ci": "NODEJS_PRODUCTION_TEST_ACTION=1 node dist/index.js",
     "test:e2e": "cross-env INPUT_SCRIPT=test:smoke INPUT_QUIET=false INPUT_WORKSPACES=false INPUT_INCLUDEWORKSPACEROOT=false INPUT_JSON=false INPUT_VERBOSE=true node dist/index.js",
     "pre-commit": "lint-staged && npm run build",
-    "build": "ncc build index.js --quiet --license=licenses.txt --source-map && tsc",
-    "preversion": "npm run build && git add -A dist"
+    "build": "ncc build action.ts --target es2020 --minify --license=licenses.txt --source-map && git add -A dist",
+    "preversion": "npm run build"
   },
   "keywords": [
     "test",
@@ -24,12 +24,11 @@
   "license": "Apache-2.0",
   "files": [
     "dist",
-    "index.js",
+    "action.ts",
     "action.yml"
   ],
   "lint-staged": {
-    "*.{yml,json,md}": "prettier --write",
-    "./index.js": "pretter --write"
+    "*.{yml,json,md}": "prettier --write"
   },
   "dependencies": {
     "@actions/core": "1.10.0",
@@ -40,6 +39,7 @@
     "pluralize": "8.0.0"
   },
   "devDependencies": {
+    "@tsconfig/node16": "16.1.0",
     "@types/node": "18.17.0",
     "@types/pluralize": "0.0.30",
     "@vercel/ncc": "0.36.1",
