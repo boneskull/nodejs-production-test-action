@@ -1,40 +1,34 @@
-const pluralize = require('pluralize');
-const {success, info, error, warning} = require('log-symbols');
-const core = require('@actions/core');
-const {inspect} = require('util');
-const {Smoker, events} = require('midnight-smoker');
-const fs = require('fs');
+import * as core from '@actions/core';
+import {error, info, success, warning} from 'log-symbols';
+import {Smoker, events} from 'midnight-smoker';
+import fs from 'node:fs';
+import {inspect} from 'node:util';
+import pluralize from 'pluralize';
 
 const {version, name} = JSON.parse(fs.readFileSync('./package.json', 'utf8'));
 
 const log = {
-  /** @param {string} msg */
-  info(msg) {
+  info(msg: string) {
     core.info(`${info} ${msg}`);
   },
-  /** @param {string} msg */
-  fail(msg) {
+  fail(msg: string) {
     core.setFailed(`${error} ${msg}`);
   },
-  /** @param {string} msg */
-  ok(msg) {
+  ok(msg: string) {
     core.info(`${success} ${msg}`);
   },
-  /** @param {string} msg */
-  warn(msg) {
+  warn(msg: string) {
     core.warning(`${warning} ${msg}`);
   },
-  /** @param {any} value */
-  dir(value) {
+  dir(value: any) {
     core.info(inspect(value, {depth: null}));
   },
 };
 
 /**
  * split a string by whitespace. if the string is empty, return an empty array.
- * @param {string} str
  */
-function splitByWhitespace(str) {
+function splitByWhitespace(str: string) {
   if (str) {
     return str.split(/\s+/g);
   }
@@ -95,8 +89,7 @@ async function main() {
         process.exitCode = 1;
       })
       .on(events.PACK_BEGIN, () => {
-        /** @type {string} */
-        let what;
+        let what: string;
         if (workspace?.length) {
           what = pluralize('workspace', workspace.length, true);
         } else if (all) {
@@ -118,7 +111,7 @@ async function main() {
       })
       .on(events.INSTALL_BEGIN, (packItems) => {
         log.info(
-          `Installing from ${pluralize('tarball', packItems.length, true)}...`
+          `Installing from ${pluralize('tarball', packItems.length, true)}...`,
         );
       })
       .on(events.INSTALL_FAILED, (err) => {
@@ -140,7 +133,7 @@ async function main() {
       })
       .on(events.RUN_SCRIPTS_FAILED, ({total, executed, failures}) => {
         log.fail(
-          `${failures} of ${total} ${pluralize('script', total)} failed`
+          `${failures} of ${total} ${pluralize('script', total)} failed`,
         );
         process.exitCode = 1;
       })
@@ -158,68 +151,3 @@ async function main() {
 main().catch((err) => {
   log.fail(err?.message ?? err);
 });
-
-/**
- * Options for {@linkcode pack}
- * @typedef PackOptions
- * @property {string} npmPath
- * @property {string} tmpDir
- * @property {string[]} [workspaces]
- * @property {boolean} [allWorkspaces]
- * @property {boolean} [includeWorkspaceRoot]
- * @property {boolean} [silent]
- */
-
-/**
- * An item in the array returned by {@linkcode pack}
- * @typedef PackResult
- * @property {string} installPath
- * @property {string} tarballFilepath
- */
-
-/**
- * Options for {@linkcode install}
- * @typedef InstallOptions
- * @property {string} npmPath
- * @property {string} tmpDir
- * @property {PackResult[]} [packResults]
- * @property {string[]} [extraArgs]
- * @property {boolean} [silent]
- */
-
-/**
- * Options for {@linkcode runScript}
- * @typedef RunScriptOptions
- * @property {string} npmPath
- * @property {string} scriptName
- * @property {string[]} [scriptArgs]
- * @property {PackResult[]} [packResults]
- * @property {string[]} [workspaces]
- * @property {boolean} [allWorkspaces]
- * @property {boolean} [includeWorkspaceRoot]
- * @property {boolean} [silent]
- */
-
-/**
- * An entry as returned by `npm pack --json`. It outputs an array of this
- * @typedef NpmPackResult
- * @property {string} id
- * @property {string} name
- * @property {string} version
- * @property {number} size
- * @property {number} unpackedSize
- * @property {string} shasum
- * @property {string} integrity
- * @property {string} filename
- * @property {NpmPackResultFileEntry[]} files
- * @property {number} entryCount
- * @property {any[]} bundled - unsure what this looks like
- */
-
-/**
- * A part of {@linkcode NpmPackResult}
- * @typedef NpmPackResultFileEntry
- * @property {string} path
- * @property {number} size
- * @property {number} mode
- */

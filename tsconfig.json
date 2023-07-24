@@ -1,14 +1,7 @@
 {
+  "extends": "@tsconfig/node16/tsconfig.json",
   "compilerOptions": {
-    "target": "es2016",
-    "module": "commonjs",
-    "esModuleInterop": true,
-    "forceConsistentCasingInFileNames": true,
-    "strict": true,
-    "allowJs": true,
-    "checkJs": true,
-    "noEmit": true,
-    "moduleResolution": "node"
+    "noEmit": true
   },
-  "files": ["index.js"]
+  "files": ["action.ts"]
 }
