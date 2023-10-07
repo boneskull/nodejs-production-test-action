@@ -40,7 +40,7 @@
   },
   "devDependencies": {
     "@tsconfig/node16": "16.1.1",
-    "@types/node": "18.18.3",
+    "@types/node": "18.18.4",
     "@types/pluralize": "0.0.31",
     "@vercel/ncc": "0.38.0",
     "cross-env": "7.0.3",
