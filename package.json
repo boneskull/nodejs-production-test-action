@@ -44,7 +44,7 @@
     "@types/pluralize": "0.0.33",
     "@vercel/ncc": "0.38.4",
     "cross-env": "7.0.3",
-    "husky": "8.0.3",
+    "husky": "9.1.7",
     "lint-staged": "13.3.0",
     "prettier": "3.6.2",
     "typescript": "5.9.3"
